@@ -1,0 +1,7 @@
+{
+  "url": "http://localhost:3030/",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-CLI-Auth": "expected_token"
+  }
+}
