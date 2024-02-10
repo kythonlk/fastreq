@@ -1,5 +1,5 @@
 use reqwest::{Client, Error, Response};
-use std::io; // Removed the unused `Write` import
+use std::io;
 use tokio::runtime::Runtime;
 
 async fn make_request(url: &str, method: &str) -> Result<Response, Error> {
@@ -8,35 +8,31 @@ async fn make_request(url: &str, method: &str) -> Result<Response, Error> {
     match method {
         "1" => client.get(url).send().await,  // GET
         "2" => client.post(url).send().await, // POST
-        // Add more options as needed
         _ => unimplemented!("This method is not supported"),
     }
 }
 
 fn main() {
-    let runtime = Runtime::new().unwrap(); // Removed the unnecessary `mut`
-
+    let runtime = Runtime::new().unwrap();
     println!("Enter the URL:");
     let mut url = String::new();
     io::stdin()
         .read_line(&mut url)
         .expect("Failed to read line");
-    let url = url.trim(); // Remove newline character
+    let url = url.trim();
 
     println!("Select the request type:");
     println!("1: GET");
     println!("2: POST");
-    // Add more options as needed
     let mut method = String::new();
     io::stdin()
         .read_line(&mut method)
         .expect("Failed to read line");
-    let method = method.trim(); // Remove newline character
+    let method = method.trim();
 
     let method_name = match method {
         "1" => "GET",
         "2" => "POST",
-        // Map more numbers to method names as needed
         _ => {
             println!("Invalid option");
             return;
