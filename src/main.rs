@@ -2,7 +2,7 @@ mod api_client;
 
 use api_client::{make_request, parse_headers, read_config, read_json_file};
 use reqwest::header::HeaderMap;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{io, path::Path};
 use tokio::runtime::Runtime;
 
@@ -98,13 +98,31 @@ fn main() {
 
     println!("Making a {} request to: {}", method, final_url);
 
+    // match runtime.block_on(make_request(&final_url, method, body.as_deref(), headers)) {
+    //     Ok(response) => {
+    //         if response.status().is_success() {
+    //             let body = runtime
+    //                 .block_on(response.text())
+    //                 .expect("Failed to read response body");
+    //             println!("Response: {}", body);
+    //         } else {
+    //             println!("Request failed with status: {}", response.status());
+    //         }
+    //     }
+    //     Err(e) => println!("Request error: {}", e),
+    // }
+
     match runtime.block_on(make_request(&final_url, method, body.as_deref(), headers)) {
         Ok(response) => {
             if response.status().is_success() {
                 let body = runtime
                     .block_on(response.text())
                     .expect("Failed to read response body");
-                println!("Response: {}", body);
+
+                match serde_json::from_str::<serde_json::Value>(&body) {
+                    Ok(json) => println!("{}", serde_json::to_string_pretty(&json).unwrap()),
+                    Err(_) => println!("Response: {}", body), // Fallback to raw body if not JSON
+                }
             } else {
                 println!("Request failed with status: {}", response.status());
             }
