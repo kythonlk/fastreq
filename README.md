@@ -1,3 +1,4 @@
+# <img src="fastreqbg.png" alt="drawing" width="100"/>
 # Api testing tool made with rust to use for api developement (Kind of Tui)
 
 This Rust project provides a simple yet powerful tool for making HTTP requests and handling responses. Built with `reqwest` for performing HTTP requests, `tokio` for asynchronous runtime, and `serde_json` for JSON parsing, it offers functionalities to make GET, POST, PUT, and PATCH requests, manage request headers and body, and pretty-print JSON responses.
