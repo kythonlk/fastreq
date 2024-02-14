@@ -20,19 +20,23 @@ pub async fn make_request(
 ) -> Result<Response, Error> {
     let client = Client::new();
 
-    let request_builder = match method.to_lowercase().as_str() {
-        "g" => client.get(url),
-        "p" => {
+    let request_builder = match method {
+        "1" => client.get(url),
+        "2" => {
             let json_body: Value =
                 serde_json::from_str(body.unwrap_or("{}")).expect("Invalid JSON body");
             client.post(url).json(&json_body)
         }
-        "put" => client.put(url).body(body.unwrap_or_default().to_string()),
-        "patch" => client.patch(url).body(body.unwrap_or_default().to_string()),
+        "3" => client.put(url).body(body.unwrap_or_default().to_string()),
+        "4" => client.patch(url).body(body.unwrap_or_default().to_string()),
         _ => unimplemented!("This method is not supported"),
     };
 
     request_builder.headers(headers).send().await
+}
+
+pub fn read_json_file(file_path: &Path) -> std::io::Result<String> {
+    fs::read_to_string(file_path)
 }
 
 pub fn parse_headers(headers_json: &Value) -> Result<HeaderMap, Box<dyn std::error::Error>> {

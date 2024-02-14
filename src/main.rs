@@ -1,127 +1,111 @@
 mod api_client;
 
-use api_client::{make_request, parse_headers, read_config, read_json_file};
+use api_client::{make_request, parse_headers, read_config};
+use clap::Parser;
+use colored::Colorize;
 use reqwest::header::HeaderMap;
-use serde_json::{json, Value};
-use std::{io, path::Path};
+use serde_json::Value;
+use std::{fs, path::Path};
 use tokio::runtime::Runtime;
 
+#[derive(Parser, Debug)]
+#[clap(author = "kythonlk", version = "0.1", about = "Api clients run in terminal simplified same as httpie but you can give pre fixes headers and urls etc.", long_about = None , after_help = "EXAMPLE:\n     ex 1: fastreq -u 'http://example.com' -t g -b body.json -H headers.json -m       \n     ex 2: fastreq -c custom_config -t g -b body.json -H head.json -m")]
+struct Args {
+    /// URL to request (leave blank to use URL from config file and you can also give different config file)
+    #[clap(short = 'u', long = "url")]
+    url: Option<String>,
+
+    /// Path to the configuration file
+    #[clap(short = 'c', long = "config", default_value = "config.json")]
+    config: String,
+
+    /// HTTP request type (GET : g , POST : p , PUT : put, PATCH : patch)
+    #[clap(short = 't', long = "type")]
+    request_type: String,
+
+    /// Path to the JSON body file
+    #[clap(short = 'b', long = "body")]
+    body_file: Option<String>,
+
+    /// Path to the JSON headers file
+    #[clap(short = 'H', long = "headers")]
+    headers_file: Option<String>,
+
+    /// Measure and print the time taken for the request
+    #[clap(short = 'm', long = "time")]
+    measure_time: bool,
+}
+
 fn main() {
+    println!(
+        "{} , {}",
+        "FASTREQ CLI".bold().blue().italic(),
+        "version 0.1".green().italic()
+    );
+    println!(
+        "{}",
+        "fast and simple http client with workspace feature"
+            .italic()
+            .purple()
+    );
+
+    let args = Args::parse();
     let runtime = Runtime::new().unwrap();
 
-    println!("Enter the URL (or leave blank to use URL from config.json):");
-    let mut url_input = String::new();
-    io::stdin()
-        .read_line(&mut url_input)
-        .expect("Failed to read line");
-    let url_input = url_input.trim();
+    let config = read_config(Path::new(&args.config)).expect("Failed to read config");
+    let final_url = args.url.unwrap_or_else(|| config.url);
 
-    println!("Select the request type:");
-    println!("1: GET");
-    println!("2: POST");
-    println!("3: PUT");
-    println!("4: PATCH");
-    let mut method = String::new();
-    io::stdin()
-        .read_line(&mut method)
-        .expect("Failed to read line");
-    let method = method.trim();
+    let body = args
+        .body_file
+        .as_ref()
+        .map(|path| fs::read_to_string(path).expect("Failed to read JSON body file"));
 
-    let body: Option<String> = if ["2", "3", "4"].contains(&method) {
-        println!("Enter the path to the JSON body file (e.g., body.json):");
-        let mut body_file_path = String::new();
-        io::stdin()
-            .read_line(&mut body_file_path)
-            .expect("Failed to read line");
-        let body_file_path = Path::new(body_file_path.trim());
-        match read_json_file(body_file_path) {
-            Ok(content) => Some(content),
-            Err(e) => {
-                eprintln!("Failed to read JSON body file: {}", e);
-                return;
-            }
-        }
+    let headers = if let Some(headers_file) = args.headers_file.as_ref() {
+        let headers_json =
+            fs::read_to_string(headers_file).expect("Failed to read JSON headers file");
+        let headers_value: Value =
+            serde_json::from_str(&headers_json).expect("Failed to parse headers JSON");
+        parse_headers(&headers_value).expect("Failed to parse headers")
     } else {
-        None
+        HeaderMap::new()
     };
 
-    let mut headers = HeaderMap::new();
-    println!("Do you want to add headers from a file? (y/n):");
-    let mut decision = String::new();
-    io::stdin()
-        .read_line(&mut decision)
-        .expect("Failed to read line");
-    if decision.trim().eq_ignore_ascii_case("y") {
-        println!("Enter the path to the JSON headers file (e.g., headers.json):");
-        let mut headers_file_path = String::new();
-        io::stdin()
-            .read_line(&mut headers_file_path)
-            .expect("Failed to read line");
-        let headers_file_path = Path::new(headers_file_path.trim());
-        let headers_json = match read_json_file(headers_file_path) {
-            Ok(content) => content,
-            Err(e) => {
-                eprintln!("Failed to read JSON headers file: {}", e);
-                return;
-            }
-        };
+    println!("Making a {} request to: {}", args.request_type, final_url);
 
-        let headers_value: Value = match serde_json::from_str(&headers_json) {
-            Ok(value) => value,
-            Err(e) => {
-                eprintln!("Failed to parse headers JSON: {}", e);
-                return;
-            }
-        };
-
-        headers = match parse_headers(&headers_value) {
-            Ok(parsed_headers) => parsed_headers,
-            Err(e) => {
-                eprintln!("Failed to parse headers: {}", e);
-                return;
-            }
-        };
+    if args.measure_time {
+        let start = std::time::Instant::now();
+        let result = runtime.block_on(make_request(
+            &final_url,
+            &args.request_type,
+            body.as_deref(),
+            headers,
+        ));
+        let elapsed = start.elapsed();
+        println!("Request completed in: {:?}", elapsed);
+        handle_response(result);
+    } else {
+        let result = runtime.block_on(make_request(
+            &final_url,
+            &args.request_type,
+            body.as_deref(),
+            headers,
+        ));
+        handle_response(result);
     }
+}
 
-    let final_url = if url_input.is_empty() {
-        let config = match read_config(Path::new("config.json")) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                eprintln!("Failed to read config: {}", e);
-                return;
-            }
-        };
-        config.url
-    } else {
-        url_input.to_string()
-    };
-
-    println!("Making a {} request to: {}", method, final_url);
-
-    // match runtime.block_on(make_request(&final_url, method, body.as_deref(), headers)) {
-    //     Ok(response) => {
-    //         if response.status().is_success() {
-    //             let body = runtime
-    //                 .block_on(response.text())
-    //                 .expect("Failed to read response body");
-    //             println!("Response: {}", body);
-    //         } else {
-    //             println!("Request failed with status: {}", response.status());
-    //         }
-    //     }
-    //     Err(e) => println!("Request error: {}", e),
-    // }
-
-    match runtime.block_on(make_request(&final_url, method, body.as_deref(), headers)) {
+fn handle_response(result: Result<reqwest::Response, reqwest::Error>) {
+    match result {
         Ok(response) => {
             if response.status().is_success() {
+                let runtime = Runtime::new().unwrap();
                 let body = runtime
                     .block_on(response.text())
                     .expect("Failed to read response body");
 
                 match serde_json::from_str::<serde_json::Value>(&body) {
                     Ok(json) => println!("{}", serde_json::to_string_pretty(&json).unwrap()),
-                    Err(_) => println!("Response: {}", body), // Fallback to raw body if not JSON
+                    Err(_) => println!("Response: {}", body),
                 }
             } else {
                 println!("Request failed with status: {}", response.status());
