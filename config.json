@@ -1,7 +1,8 @@
 {
-  "url": "http://localhost:3030/",
+  "url": "https://jsonplaceholder.typicode.com/posts",
+  "method": "POST",
   "headers": {
-    "Content-Type": "application/json",
-    "X-CLI-Auth": "expected_token"
-  }
+    "Content-Type": "application/json"
+  },
+  "body": "{\"title\": \"foo\", \"body\": \"bar\", \"userId\": 1}"
 }
