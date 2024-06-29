@@ -1,7 +1,9 @@
 {
-  "url": "http://localhost:3030/",
+  "base_url": "https://example.com",
+  "url": "",
+  "method": "GET",
   "headers": {
-    "Content-Type": "application/json",
-    "X-CLI-Auth": "expected_token"
-  }
+    "Content-Type": "application/json"
+  },
+  "body": ""
 }
