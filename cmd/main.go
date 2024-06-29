@@ -12,11 +12,8 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		helper.PrintUsage()
-		os.Exit(1)
-	}
 
+	initFlag := flag.Bool("init", false, "Initialize new config file")
 	configFile := flag.String("F", "", "Configuration file")
 	url := flag.String("X", "", "URL to send request to")
 	method := flag.String("M", "GET", "HTTP method")
@@ -24,6 +21,20 @@ func main() {
 	body := flag.String("B", "", "Request body")
 
 	flag.Parse()
+
+	if *initFlag {
+		err := helper.InitializeConfig("config.json")
+		if err != nil {
+			log.Fatalf("Error initializing config file: %v", err)
+		}
+		return
+	}
+
+	if *configFile == "" && *url == "" {
+		fmt.Println("Please specify a configuration file (-F) or URL (-X)")
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	var config *types.Config
 	var err error
@@ -33,7 +44,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error reading config file: %v", err)
 		}
-	} else if *url != "" {
+	} else {
 		headersMap := make(map[string]string)
 		if *headers != "" {
 			for _, header := range strings.Split(*headers, ",") {
@@ -49,9 +60,6 @@ func main() {
 			Headers: headersMap,
 			Body:    *body,
 		}
-	} else {
-		helper.PrintUsage()
-		os.Exit(1)
 	}
 
 	response, err := helper.SendRequest(config)

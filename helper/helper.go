@@ -54,3 +54,27 @@ func PrintUsage() {
 	fmt.Println("  go run main.go -F <config.json>")
 	fmt.Println("  go run main.go -X <url> [-M <method>] [-H <header=value>]... [-B <body>]")
 }
+
+func InitializeConfig(filename string) error {
+	config := &types.Config{
+		URL:     "https://example.com",
+		Method:  "GET",
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Body:    "",
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(config); err != nil {
+		return err
+	}
+
+	fmt.Printf("Initialized new config file: %s\n", filename)
+	return nil
+}
