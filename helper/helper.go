@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"github.com/kythonlk/fastreq/types"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 )
 
 func ReadConfig(filename string) (*types.Config, error) {
@@ -57,7 +59,7 @@ func PrintUsage() {
 
 func InitializeConfig(filename string) error {
 	config := &types.Config{
-		URL:     "https://example.com",
+		BaseURL: "https://example.com",
 		Method:  "GET",
 		Headers: map[string]string{"Content-Type": "application/json"},
 		Body:    "",
@@ -77,4 +79,15 @@ func InitializeConfig(filename string) error {
 
 	fmt.Printf("Initialized new config file: %s\n", filename)
 	return nil
+}
+
+func ConstructFullURL(baseURL, endpoint string) (string, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", err
+	}
+
+	endpoint = strings.TrimPrefix(endpoint, "/")
+	u.Path = fmt.Sprintf("%s/%s", strings.TrimSuffix(u.Path, "/"), endpoint)
+	return u.String(), nil
 }

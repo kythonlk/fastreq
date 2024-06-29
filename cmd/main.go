@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/kythonlk/fastreq/helper"
 	"github.com/kythonlk/fastreq/types"
 	"io"
@@ -11,14 +12,24 @@ import (
 	"strings"
 )
 
-func main() {
+var title = lipgloss.NewStyle().
+	BorderBottom(true).
+	Bold(true).
+	Foreground(lipgloss.Color("#7D56F4")).
+	PaddingTop(1)
 
+var bodyst = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#04B575")).
+	PaddingTop(1)
+
+func main() {
 	initFlag := flag.Bool("init", false, "Initialize new config file")
 	configFile := flag.String("F", "", "Configuration file")
-	url := flag.String("X", "", "URL to send request to")
+	urlFlag := flag.String("X", "", "URL to send request to")
 	method := flag.String("M", "GET", "HTTP method")
 	headers := flag.String("H", "", "Headers (format: key=value)")
 	body := flag.String("B", "", "Request body")
+	endpoint := flag.String("E", "", "Endpoint with arguments")
 
 	flag.Parse()
 
@@ -30,7 +41,7 @@ func main() {
 		return
 	}
 
-	if *configFile == "" && *url == "" {
+	if *configFile == "" && *urlFlag == "" {
 		fmt.Println("Please specify a configuration file (-F) or URL (-X)")
 		flag.Usage()
 		os.Exit(1)
@@ -54,11 +65,32 @@ func main() {
 				}
 			}
 		}
-		config = &types.Config{
-			URL:     *url,
-			Method:  *method,
-			Headers: headersMap,
-			Body:    *body,
+
+		baseURL := ""
+		if config.BaseURL != "" {
+			baseURL = config.BaseURL
+		}
+
+		if *endpoint != "" {
+			fullURL, err := helper.ConstructFullURL(baseURL, *endpoint)
+			if err != nil {
+				log.Fatalf("Error constructing full URL: %v", err)
+			}
+			config = &types.Config{
+				URL:     fullURL,
+				Method:  *method,
+				Headers: headersMap,
+				Body:    *body,
+			}
+		} else if *urlFlag != "" {
+			config = &types.Config{
+				URL:     *urlFlag,
+				Method:  *method,
+				Headers: headersMap,
+				Body:    *body,
+			}
+		} else {
+			log.Fatalf("Endpoint (-E) must be specified when URL (-X) is not provided")
 		}
 	}
 
